@@ -763,47 +763,147 @@ function renderTerminal() {
   const promptPath = project ? `~/${project.slug}/${state.activeView}` : '~/new-workspace';
 
   return `
-    <section class="terminal-section terminal">
-      <div class="terminal-titlebar terminal-bar">
-        <span class="tdot g"></span>
-        <span class="tdot c"></span>
-        <span class="tdot a"></span>
+    <section class="terminal-section">
+      <div class="terminal-card">
+        <div class="terminal-card-bar">
+          <div class="terminal-dots">
+            <span class="tdot g"></span>
+            <span class="tdot c"></span>
+            <span class="tdot a"></span>
+          </div>
 
-        <span class="ttitle">agent-terminal — ${escapeHtml(promptPath)}</span>
+          <span class="terminal-title">
+            agent-terminal — ${escapeHtml(promptPath)}
+          </span>
 
-        <span class="tstatus">
-          <span class="live-dot small"></span>
-          ${state.busy ? 'processing' : 'live'}
-        </span>
+          <span class="terminal-live">
+            <span class="live-dot small"></span>
+            ${state.busy ? 'processing' : 'live'}
+          </span>
+        </div>
+
+        <div class="terminal-output">
+          ${
+            state.logs.length
+              ? state.logs.map((log) => renderTerminalLog(log)).join('')
+              : renderTerminalGreeting()
+          }
+
+          ${state.busy ? `<div class="terminal-line terminal-warn">AI is processing... please wait.</div>` : ''}
+        </div>
+
+        <form class="terminal-input-form" id="commandForm">
+          <span class="terminal-prompt-symbol">›</span>
+
+          <input
+            class="terminal-input"
+            id="commandInput"
+            autocomplete="off"
+            placeholder="Type a command… e.g. '/help', '/new Project Name', '/projects', 'cd /project/uiux'"
+            ${state.busy ? 'disabled' : ''}
+          />
+        </form>
       </div>
-
-      <div class="terminal-output terminal-body">
-        ${state.logs
-          .map(
-            (log) => `
-              <div class="log-line log-${escapeHtml(log.type)}">
-                ${escapeHtml(log.text)}
-              </div>
-            `
-          )
-          .join('')}
-
-        ${state.busy ? `<div class="log-line log-warn">AI is processing... please wait.</div>` : ''}
-      </div>
-
-      <form class="command-row terminal-input-row" id="commandForm">
-        <span class="prompt">agent@firebase:${escapeHtml(promptPath)}$</span>
-
-        <input
-          class="command-input"
-          id="commandInput"
-          autocomplete="off"
-          placeholder="Type /help, /new Project Name, /projects, cd /project/uiux..."
-          ${state.busy ? 'disabled' : ''}
-        />
-      </form>
     </section>
   `;
+}
+
+function renderTerminalGreeting() {
+  return `
+    <div class="terminal-line terminal-success">AI Agent Terminal v1.0.0</div>
+    <div class="terminal-line terminal-muted">Your AI partner for planning, building, and delivering.</div>
+    <div class="terminal-line"></div>
+    <div class="terminal-line terminal-muted">Welcome, developer.</div>
+    <div class="terminal-line terminal-muted">Type <span class="terminal-cmd">/help</span> to see all available commands.</div>
+    <div class="terminal-line"></div>
+    <div class="terminal-line">
+      <span class="terminal-user">agent@firebase</span><span class="terminal-path">:~$</span>
+      <span class="terminal-cmd"> /help</span>
+    </div>
+  `;
+}
+
+function renderTerminal() {
+  const project = activeProject();
+  const promptPath = project ? `~/${project.slug}/${state.activeView}` : '~/new-workspace';
+
+  return `
+    <section class="terminal-section">
+      <div class="terminal-card">
+        <div class="terminal-card-bar">
+          <div class="terminal-dots">
+            <span class="tdot g"></span>
+            <span class="tdot c"></span>
+            <span class="tdot a"></span>
+          </div>
+
+          <span class="terminal-title">
+            agent-terminal — ${escapeHtml(promptPath)}
+          </span>
+
+          <span class="terminal-live">
+            <span class="live-dot small"></span>
+            ${state.busy ? 'processing' : 'live'}
+          </span>
+        </div>
+
+        <div class="terminal-output">
+          ${
+            state.logs.length
+              ? state.logs.map((log) => renderTerminalLog(log)).join('')
+              : renderTerminalGreeting()
+          }
+
+          ${state.busy ? `<div class="terminal-line terminal-warn">AI is processing... please wait.</div>` : ''}
+        </div>
+
+        <form class="terminal-input-form" id="commandForm">
+          <span class="terminal-prompt-symbol">›</span>
+
+          <input
+            class="terminal-input"
+            id="commandInput"
+            autocomplete="off"
+            placeholder="Type a command… e.g. '/help', '/new Project Name', '/projects', 'cd /project/uiux'"
+            ${state.busy ? 'disabled' : ''}
+          />
+        </form>
+      </div>
+    </section>
+  `;
+}
+
+function renderTerminalGreeting() {
+  return `
+    <div class="terminal-line terminal-success">AI Agent Terminal v1.0.0</div>
+    <div class="terminal-line terminal-muted">Your AI partner for planning, building, and delivering.</div>
+    <div class="terminal-line"></div>
+    <div class="terminal-line terminal-muted">Welcome, developer.</div>
+    <div class="terminal-line terminal-muted">Type <span class="terminal-cmd">/help</span> to see all available commands.</div>
+    <div class="terminal-line"></div>
+    <div class="terminal-line">
+      <span class="terminal-user">agent@firebase</span><span class="terminal-path">:~$</span>
+      <span class="terminal-cmd"> /help</span>
+    </div>
+  `;
+}
+
+function renderTerminalLog(log) {
+  const text = escapeHtml(log.text || '');
+  const type = log.type || 'muted';
+
+  let cls = 'terminal-muted';
+
+  if (type === 'success') cls = 'terminal-success';
+  if (type === 'cyan') cls = 'terminal-cyan';
+  if (type === 'warn') cls = 'terminal-warn';
+  if (type === 'error') cls = 'terminal-error';
+
+  if (text.includes('$')) {
+    return `<div class="terminal-line ${cls}">${text}</div>`;
+  }
+
+  return `<div class="terminal-line ${cls}">${text}</div>`;
 }
 
 function renderWorkspace() {
