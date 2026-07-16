@@ -30,7 +30,6 @@ const state = {
   activeProjectId: null,
   activeView: 'home',
   logs: [],
-  commandDraft: '',
   metrics: null,
   modal: null,
   busy: false,
@@ -53,17 +52,22 @@ const VIEW_NAMES = {
 };
 
 function slugify(value) {
-  return String(value || '')
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '') || 'project';
+  return (
+    String(value || '')
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '') || 'project'
+  );
 }
 
 function fmtDate(value) {
   if (!value) return 'Unknown time';
+
   const date = value?.toDate ? value.toDate() : new Date(value);
+
   if (Number.isNaN(date.getTime())) return 'Unknown time';
+
   return date.toLocaleString();
 }
 
@@ -92,14 +96,22 @@ function activeAnalysis() {
 }
 
 function addLog(text, type = 'muted') {
-  state.logs.push({ text, type, at: new Date().toISOString() });
-  if (state.logs.length > 180) state.logs = state.logs.slice(-180);
+  state.logs.push({
+    text,
+    type,
+    at: new Date().toISOString(),
+  });
+
+  if (state.logs.length > 180) {
+    state.logs = state.logs.slice(-180);
+  }
+
   render();
 
   setTimeout(() => {
     const out = $('.terminal-output');
     if (out) out.scrollTop = out.scrollHeight;
-  });
+  }, 0);
 }
 
 function setView(view) {
@@ -122,6 +134,7 @@ async function init() {
   await fetchMetrics();
 
   renderBoot('Reading Firebase config...');
+
   const cfgRes = await fetch('/api/firebase-config');
   const cfg = await cfgRes.json();
 
@@ -130,13 +143,20 @@ async function init() {
 
   if (!cfg.ready) {
     state.logs = [
-      { type: 'warn', text: 'Firebase is not configured yet.' },
-      { type: 'muted', text: `Missing env keys: ${state.firebaseMissing.join(', ')}` },
+      {
+        type: 'warn',
+        text: 'Firebase is not configured yet.',
+      },
+      {
+        type: 'muted',
+        text: `Missing env keys: ${state.firebaseMissing.join(', ')}`,
+      },
       {
         type: 'cyan',
         text: 'Add Firebase values to .env.local, enable Anonymous Auth, create Firestore, then restart node server.js.',
       },
     ];
+
     render();
     startMetricLoop();
     return;
@@ -161,18 +181,34 @@ async function init() {
       subscribeProjects();
 
       state.logs = [
-        { type: 'success', text: 'AI Agent Terminal started successfully.' },
-        { type: 'muted', text: 'No demo project is loaded. Use /new Project Name or click New Project.' },
-        { type: 'cyan', text: 'Type /help to see all commands.' },
+        {
+          type: 'success',
+          text: 'AI Agent Terminal started successfully.',
+        },
+        {
+          type: 'muted',
+          text: 'No demo project is loaded. Use /new Project Name or click New Project.',
+        },
+        {
+          type: 'cyan',
+          text: 'Type /help to see all commands.',
+        },
       ];
 
       render();
     });
   } catch (err) {
     state.logs = [
-      { type: 'error', text: `Firebase start failed: ${err.message}` },
-      { type: 'warn', text: 'Check Firebase config, enable Anonymous Auth, and Firestore rules.' },
+      {
+        type: 'error',
+        text: `Firebase start failed: ${err.message}`,
+      },
+      {
+        type: 'warn',
+        text: 'Check Firebase config, enable Anonymous Auth, and Firestore rules.',
+      },
     ];
+
     render();
   }
 
@@ -199,7 +235,10 @@ function subscribeProjects() {
   onSnapshot(
     q,
     (snap) => {
-      state.projects = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      state.projects = snap.docs.map((d) => ({
+        id: d.id,
+        ...d.data(),
+      }));
 
       if (!state.activeProjectId && state.projects.length) {
         state.activeProjectId = state.projects[0].id;
@@ -242,11 +281,15 @@ function renderMetricsOnly() {
 }
 
 async function createProject({ name, clientName, clientIdea, transcript = '' }) {
-  if (!state.authReady) return addLog('Firebase is not ready yet.', 'error');
+  if (!state.authReady) {
+    return addLog('Firebase is not ready yet.', 'error');
+  }
 
   const cleanName = String(name || '').trim();
 
-  if (!cleanName) return addLog('Project name is required.', 'error');
+  if (!cleanName) {
+    return addLog('Project name is required.', 'error');
+  }
 
   const ref = await addDoc(projectCollection(), {
     name: cleanName,
@@ -257,6 +300,7 @@ async function createProject({ name, clientName, clientIdea, transcript = '' }) 
     answers: {},
     analysis: null,
     analysisMeta: null,
+    stitch: null,
     commandLog: [],
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
@@ -274,7 +318,10 @@ async function createProject({ name, clientName, clientIdea, transcript = '' }) 
 
 async function updateActiveProject(patch) {
   const project = activeProject();
-  if (!project) return addLog('No active project selected.', 'error');
+
+  if (!project) {
+    return addLog('No active project selected.', 'error');
+  }
 
   await updateDoc(projectDoc(project.id), {
     ...patch,
@@ -284,9 +331,11 @@ async function updateActiveProject(patch) {
 
 async function deleteActiveProject() {
   const project = activeProject();
+
   if (!project) return;
 
   const ok = confirm(`Delete project "${project.name}" from Firebase?`);
+
   if (!ok) return;
 
   await deleteDoc(projectDoc(project.id));
@@ -313,7 +362,12 @@ function findProjectByCommand(value) {
   const input = value.replace(/^cd\s+/i, '').trim().replace(/^\//, '');
   const [projectPart, sectionPart] = input.split('/').filter(Boolean);
 
-  if (!projectPart) return { project: null, section: null };
+  if (!projectPart) {
+    return {
+      project: null,
+      section: null,
+    };
+  }
 
   const wanted = slugify(projectPart);
 
@@ -326,7 +380,10 @@ function findProjectByCommand(value) {
 
   const section = normalizeSection(sectionPart);
 
-  return { project, section };
+  return {
+    project,
+    section,
+  };
 }
 
 function normalizeSection(value) {
@@ -368,7 +425,10 @@ async function runAnalyze() {
     return addLog('Create or open a project first. Use /new Project Name.', 'error');
   }
 
-  const inputText = [project.clientIdea, project.transcript].filter(Boolean).join('\n').trim();
+  const inputText = [project.clientIdea, project.transcript]
+    .filter(Boolean)
+    .join('\n')
+    .trim();
 
   if (!inputText) {
     return addLog('No client idea or transcript found. Use /intake first.', 'error');
@@ -382,7 +442,9 @@ async function runAnalyze() {
   try {
     const res = await fetch('/api/analyze', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+      },
       body: JSON.stringify({
         projectName: project.name,
         clientName: project.clientName,
@@ -395,7 +457,9 @@ async function runAnalyze() {
 
     const data = await res.json();
 
-    if (!res.ok) throw new Error(data.error || 'AI analysis failed.');
+    if (!res.ok) {
+      throw new Error(data.error || 'AI analysis failed.');
+    }
 
     await updateActiveProject({
       analysis: data.output,
@@ -437,7 +501,13 @@ async function handleCommand(raw) {
   if (command.startsWith('/new')) {
     const name = command.replace('/new', '').trim();
 
-    if (name) return createProject({ name, clientName: '', clientIdea: '' });
+    if (name) {
+      return createProject({
+        name,
+        clientName: '',
+        clientIdea: '',
+      });
+    }
 
     state.modal = 'newProject';
     return render();
@@ -464,9 +534,11 @@ async function handleCommand(raw) {
   if (command === '/questions') return setView('questions');
   if (command === '/uiux' || command === '/ui-ux') return setView('uiux');
   if (command === '/stitch' || command === '/stitch-ui') return setView('stitch');
+
   if (command.startsWith('/stitch-url ')) {
     return saveStitchUrl(command.replace('/stitch-url', '').trim());
   }
+
   if (command === '/stitch-generate') return runStitchGenerate();
   if (command === '/dev' || command === '/development') return setView('dev');
   if (command === '/infra' || command === '/infrastructure') return setView('infra');
@@ -594,11 +666,14 @@ function renderRightPanel() {
   const a = activeAnalysis();
 
   const questions = (a?.missingQuestions || []).slice(0, 4);
+
   const goals = [
     a?.project?.businessGoal,
     a?.project?.projectType,
     a?.uiuxPlanning?.designDirection,
-  ].filter(Boolean).slice(0, 3);
+  ]
+    .filter(Boolean)
+    .slice(0, 3);
 
   const recentLogs = state.logs.slice(-5).reverse();
 
@@ -758,71 +833,7 @@ function renderHistoryPanel() {
   `;
 }
 
-function renderTerminal() {
-  const project = activeProject();
-  const promptPath = project ? `~/${project.slug}/${state.activeView}` : '~/new-workspace';
-
-  return `
-    <section class="terminal-section">
-      <div class="terminal-card">
-        <div class="terminal-card-bar">
-          <div class="terminal-dots">
-            <span class="tdot g"></span>
-            <span class="tdot c"></span>
-            <span class="tdot a"></span>
-          </div>
-
-          <span class="terminal-title">
-            agent-terminal — ${escapeHtml(promptPath)}
-          </span>
-
-          <span class="terminal-live">
-            <span class="live-dot small"></span>
-            ${state.busy ? 'processing' : 'live'}
-          </span>
-        </div>
-
-        <div class="terminal-output">
-          ${
-            state.logs.length
-              ? state.logs.map((log) => renderTerminalLog(log)).join('')
-              : renderTerminalGreeting()
-          }
-
-          ${state.busy ? `<div class="terminal-line terminal-warn">AI is processing... please wait.</div>` : ''}
-        </div>
-
-        <form class="terminal-input-form" id="commandForm">
-          <span class="terminal-prompt-symbol">›</span>
-
-          <input
-            class="terminal-input"
-            id="commandInput"
-            autocomplete="off"
-            placeholder="Type a command… e.g. '/help', '/new Project Name', '/projects', 'cd /project/uiux'"
-            ${state.busy ? 'disabled' : ''}
-          />
-        </form>
-      </div>
-    </section>
-  `;
-}
-
-function renderTerminalGreeting() {
-  return `
-    <div class="terminal-line terminal-success">AI Agent Terminal v1.0.0</div>
-    <div class="terminal-line terminal-muted">Your AI partner for planning, building, and delivering.</div>
-    <div class="terminal-line"></div>
-    <div class="terminal-line terminal-muted">Welcome, developer.</div>
-    <div class="terminal-line terminal-muted">Type <span class="terminal-cmd">/help</span> to see all available commands.</div>
-    <div class="terminal-line"></div>
-    <div class="terminal-line">
-      <span class="terminal-user">agent@firebase</span><span class="terminal-path">:~$</span>
-      <span class="terminal-cmd"> /help</span>
-    </div>
-  `;
-}
-
+/* FIXED: Only one renderTerminal function */
 function renderTerminal() {
   const project = activeProject();
   const promptPath = project ? `~/${project.slug}/${state.activeView}` : '~/new-workspace';
@@ -898,10 +909,6 @@ function renderTerminalLog(log) {
   if (type === 'cyan') cls = 'terminal-cyan';
   if (type === 'warn') cls = 'terminal-warn';
   if (type === 'error') cls = 'terminal-error';
-
-  if (text.includes('$')) {
-    return `<div class="terminal-line ${cls}">${text}</div>`;
-  }
 
   return `<div class="terminal-line ${cls}">${text}</div>`;
 }
@@ -1433,15 +1440,25 @@ async function runStitchGenerate() {
   try {
     const res = await fetch('/api/stitch/generate', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title: project.name, prompt, deviceType: 'DESKTOP' }),
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        title: project.name,
+        prompt,
+        deviceType: 'DESKTOP',
+      }),
     });
 
     const data = await res.json();
 
-    if (!res.ok) throw new Error(data.error || 'Stitch generation failed.');
+    if (!res.ok) {
+      throw new Error(data.error || 'Stitch generation failed.');
+    }
 
-    await updateActiveProject({ stitch: data.result });
+    await updateActiveProject({
+      stitch: data.result,
+    });
 
     state.activeView = 'stitch';
 
@@ -1619,10 +1636,7 @@ function parseTreeToHorizontalNodes(treeText) {
 
     if (connectorIndex >= 0) {
       depth = Math.floor(connectorIndex / 4) + 1;
-      name = line
-        .slice(connectorIndex)
-        .replace(/^[├└]──\s*/, '')
-        .trim();
+      name = line.slice(connectorIndex).replace(/^[├└]──\s*/, '').trim();
     } else {
       depth = 0;
       name = line.trim();
@@ -1648,6 +1662,7 @@ function parseTreeToHorizontalNodes(treeText) {
     };
 
     const parent = stack[depth - 1] || root;
+
     parent.children.push(node);
 
     stack[depth] = node;
@@ -1931,7 +1946,9 @@ function bindEvents() {
   }
 
   document.querySelectorAll('[data-project-id]').forEach((el) => {
-    el.addEventListener('click', () => selectProject(el.getAttribute('data-project-id')));
+    el.addEventListener('click', () => {
+      selectProject(el.getAttribute('data-project-id'));
+    });
   });
 
   document.querySelectorAll('[data-view-target]').forEach((el) => {
@@ -1965,7 +1982,9 @@ function bindEvents() {
         render();
       }
 
-      if (action === 'run-analyze') await runAnalyze();
+      if (action === 'run-analyze') {
+        await runAnalyze();
+      }
 
       if (action === 'view-stitch') {
         state.activeView = 'stitch';
@@ -1976,17 +1995,25 @@ function bindEvents() {
         window.open('https://stitch.withgoogle.com/', '_blank', 'noopener');
       }
 
-      if (action === 'copy-stitch-prompt') await copyStitchPrompt();
+      if (action === 'copy-stitch-prompt') {
+        await copyStitchPrompt();
+      }
 
-      if (action === 'run-stitch-generate') await runStitchGenerate();
+      if (action === 'run-stitch-generate') {
+        await runStitchGenerate();
+      }
 
       if (action === 'save-stitch-url') {
         await saveStitchUrl($('#manualStitchUrl')?.value || '');
       }
 
-      if (action === 'save-intake') await saveIntakeFromForm();
+      if (action === 'save-intake') {
+        await saveIntakeFromForm();
+      }
 
-      if (action === 'save-answers') await saveAnswersFromForm();
+      if (action === 'save-answers') {
+        await saveAnswersFromForm();
+      }
 
       if (action === 'create-project') {
         await createProject({
@@ -2000,9 +2027,13 @@ function bindEvents() {
 }
 
 async function copyStitchPrompt() {
-  const prompt = $('#stitchPromptInput')?.value || (activeAnalysis() ? buildStitchPrompt(activeAnalysis()) : '');
+  const prompt =
+    $('#stitchPromptInput')?.value ||
+    (activeAnalysis() ? buildStitchPrompt(activeAnalysis()) : '');
 
-  if (!prompt) return addLog('No Stitch prompt available. Run /analyze first.', 'error');
+  if (!prompt) {
+    return addLog('No Stitch prompt available. Run /analyze first.', 'error');
+  }
 
   try {
     await navigator.clipboard.writeText(prompt);
@@ -2030,13 +2061,17 @@ async function saveIntakeFromForm() {
 }
 
 async function saveAnswersFromForm() {
-  const answers = { ...(activeProject()?.answers || {}) };
+  const answers = {
+    ...(activeProject()?.answers || {}),
+  };
 
   document.querySelectorAll('.answer-input').forEach((input) => {
     answers[input.getAttribute('data-answer-key')] = input.value;
   });
 
-  await updateActiveProject({ answers });
+  await updateActiveProject({
+    answers,
+  });
 
   addLog('Question answers saved to Firebase.', 'success');
 }
