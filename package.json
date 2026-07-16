@@ -2,6 +2,7 @@
   "name": "ai-agent-terminal-firebase-stitch",
   "version": "1.0.0",
   "private": true,
+  "main": "server.js",
   "description": "No-build AI Agent Terminal with Firebase, Groq, and optional Google Stitch SDK integration.",
   "scripts": {
     "start": "node server.js",
