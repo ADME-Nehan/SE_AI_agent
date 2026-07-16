@@ -184,19 +184,35 @@ async function readBody(req) {
 }
 
 function extractJson(text) {
-  const cleaned = String(text || "").trim();
+  const cleaned = String(text || '')
+    .trim()
+    .replace(/^```json/i, '')
+    .replace(/^```/i, '')
+    .replace(/```$/i, '')
+    .trim();
 
   try {
     return JSON.parse(cleaned);
-  } catch {}
+  } catch (firstError) {
+    const firstBrace = cleaned.indexOf('{');
+    const lastBrace = cleaned.lastIndexOf('}');
 
-  const match = cleaned.match(/\{[\s\S]*\}/);
+    if (firstBrace === -1 || lastBrace === -1 || lastBrace <= firstBrace) {
+      throw new Error(
+        `AI did not return JSON. Raw response starts with: ${cleaned.slice(0, 300)}`
+      );
+    }
 
-  if (!match) {
-    throw new Error("AI response did not contain valid JSON.");
+    const jsonOnly = cleaned.slice(firstBrace, lastBrace + 1);
+
+    try {
+      return JSON.parse(jsonOnly);
+    } catch (secondError) {
+      throw new Error(
+        `AI returned invalid JSON. ${secondError.message}. Raw JSON starts with: ${jsonOnly.slice(0, 500)}`
+      );
+    }
   }
-
-  return JSON.parse(match[0]);
 }
 
 function buildAgentPrompt(input) {
@@ -386,14 +402,17 @@ async function handleAnalyze(req, res) {
           {
             role: "system",
             content:
-              "You are a precise software planning AI agent. Return only valid JSON. Never use demo data.",
+              "You are a precise software planning AI agent. Return ONLY valid JSON. Do not use markdown. Do not add comments. Do not add trailing commas. All strings must be double-quoted. All arrays and objects must be valid JSON.",
           },
           {
             role: "user",
             content: prompt,
           },
         ],
-        temperature: 0.2,
+        temperature: 0,
+        response_format: {
+          type: "json_object",
+        },
       }),
     });
 
